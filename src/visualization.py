@@ -102,12 +102,15 @@ def plot_fig4_5(data, train_start_str, train_end_str, test_start_str, test_end_s
     plt.plot(ska_dates, benchmarks['Bonds'],  label='AGG Bonds', linestyle='--')
     plt.plot(ska_dates, benchmarks['Stocks'], label='S&P 500',   linestyle='--')
     plt.plot(ska_dates, benchmarks['Ceiling'],label='Ceiling',   linestyle='-.')
-    plt.yscale('log')
+    # 移除对数刻度
+    # plt.yscale('log')
     plt.grid(True, alpha=0.3)
     plt.legend(loc='upper left')
-    plt.title(f'{fig_title_prefix}Fig.4 - On-policy & Continuous')
+    plt.title(f'{fig_title_prefix}Portfolio Performance: On-policy & Continuous Agents')
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
     plt.gcf().autofmt_xdate()
+    plt.ylabel('Portfolio Value ($)')
+    plt.xlabel('Year')
     plt.tight_layout()
 
     # ========== Fig.5: off-policy ==========
@@ -138,13 +141,18 @@ def plot_fig4_5(data, train_start_str, train_end_str, test_start_str, test_end_s
     plt.plot(q_ska_dates, benchmarks['A2'], label='A2', linestyle=':')
     plt.plot(q_ska_dates, benchmarks['A3'], label='A3', linestyle=':')
     plt.plot(q_ska_dates, benchmarks['A4'], label='A4', linestyle=':')
-    plt.yscale('log')
+    # 移除对数刻度
+    # plt.yscale('log')
     plt.grid(True, alpha=0.3)
     plt.legend(loc='upper left')
-    plt.title(f'{fig_title_prefix}Fig.5 - Off-policy')
+    plt.title(f'{fig_title_prefix}Portfolio Performance: Off-policy Agents')
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
     plt.gcf().autofmt_xdate()
+    plt.ylabel('Portfolio Value ($)')
+    plt.xlabel('Year')
     plt.tight_layout()
+    
+    return fig4, fig5
 
 def plot_fig6_7(data, train_start_str, train_end_str, test_start_str, test_end_str,
                 freq='annual', portfolio='ptf1', fig_title_prefix=''):
@@ -153,5 +161,14 @@ def plot_fig6_7(data, train_start_str, train_end_str, test_start_str, test_end_s
     Fig.7: Off-policy (第二个训练/测试区间)
     """
     # 与fig4_5同理，只是换了一组训练/测试区间
-    plot_fig4_5(data, train_start_str, train_end_str, test_start_str, test_end_str,
-                freq, portfolio, fig_title_prefix='(Second) ' + fig_title_prefix)
+    fig6, fig7 = plot_fig4_5(data, train_start_str, train_end_str, test_start_str, test_end_str,
+                freq, portfolio, fig_title_prefix='Portfolio Performance: Second Period - ')
+    
+    # 重命名图表
+    plt.figure(fig6.number)
+    plt.title(f'{fig_title_prefix}Portfolio Performance: On-policy & Continuous Agents (Second Period)')
+    
+    plt.figure(fig7.number)
+    plt.title(f'{fig_title_prefix}Portfolio Performance: Off-policy Agents (Second Period)')
+    
+    return fig6, fig7

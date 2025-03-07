@@ -18,7 +18,7 @@ def backtest(data, train_end_date, test_end_date,
         test_end_date = pd.to_datetime(test_end_date)
 
     train_data = data[data.index <= train_end_date]
-    test_data  = data[(data.index > train_end_date) & (data.index <= test_end_date)]
+    test_data = data[(data.index > train_end_date) & (data.index <= test_end_date)]
 
     # 初始化代理
     if agent_type == 'continuous':
@@ -29,10 +29,18 @@ def backtest(data, train_end_date, test_end_date,
         agent = QLambdaAgent(reward_type=reward_type)
 
     # 训练阶段：多episode随机化初始状态
-    num_episodes = 10
+    num_episodes = 50
     min_ep_len = 4
     for _ in range(num_episodes):
+        # 随机选择起始点
         start_idx = np.random.randint(0, max(1, len(train_data) - min_ep_len))
+        
+        # 重置资格迹
+        if agent_type == 'continuous':
+            agent.e_trace = {s: [0, 0] for s in agent.e_trace}
+        else:
+            agent.e = pd.DataFrame(np.zeros((4, 5)), index=agent.q.index, columns=agent.q.columns)
+            
         for i in range(start_idx + 1, len(train_data)):
             prev_row = train_data.iloc[i - 1]
             curr_row = train_data.iloc[i]
@@ -44,10 +52,11 @@ def backtest(data, train_end_date, test_end_date,
                 action = agent.choose_action(state)
 
             # 计算reward
-            if (agent_type in ['sarsa', 'qlearning'] and reward_type == 'sharpe'):
+            if agent_type in ['sarsa', 'qlearning'] and reward_type == 'sharpe':
                 reward = agent.get_reward(curr_row[spx_col], curr_row[agg_col], action)
             else:
-                reward = action * curr_row[spx_col] + (1 - action) * curr_row[agg_col]
+                portfolio_ret = action * curr_row[spx_col] + (1 - action) * curr_row[agg_col]
+                reward = portfolio_ret
 
             next_state = get_state(curr_row[spx_col], curr_row[agg_col])
 
@@ -113,11 +122,18 @@ def backtest_AKA(data, train_end_date, test_end_date,
             agent = QLambdaAgent(reward_type=reward_type)
 
         # 训练
-        num_episodes = 10
+        num_episodes = 50  # 增加迭代次数
         min_ep_len = 4
         if len(current_train_data) > min_ep_len:
             for _ in range(num_episodes):
                 start_idx = np.random.randint(0, len(current_train_data) - min_ep_len)
+                
+                # 重置资格迹
+                if agent_type == 'continuous':
+                    agent.e_trace = {s: [0, 0] for s in agent.e_trace}
+                else:
+                    agent.e = pd.DataFrame(np.zeros((4, 5)), index=agent.q.index, columns=agent.q.columns)
+                    
                 for i in range(start_idx + 1, len(current_train_data)):
                     prev_row = current_train_data.iloc[i - 1]
                     curr_row = current_train_data.iloc[i]
@@ -128,10 +144,11 @@ def backtest_AKA(data, train_end_date, test_end_date,
                     else:
                         action = agent.choose_action(state)
 
-                    if (agent_type in ['sarsa', 'qlearning'] and reward_type == 'sharpe'):
+                    if agent_type in ['sarsa', 'qlearning'] and reward_type == 'sharpe':
                         reward = agent.get_reward(curr_row[spx_col], curr_row[agg_col], action)
                     else:
-                        reward = action * curr_row[spx_col] + (1 - action) * curr_row[agg_col]
+                        portfolio_ret = action * curr_row[spx_col] + (1 - action) * curr_row[agg_col]
+                        reward = portfolio_ret
 
                     next_state = get_state(curr_row[spx_col], curr_row[agg_col])
 

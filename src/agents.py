@@ -31,28 +31,39 @@ class SarsaLambdaAgent:
 
     def get_reward(self, spx_ret, agg_ret, action):
         portfolio_ret = action * spx_ret + (1 - action) * agg_ret
+        
         if self.reward_type == 'return':
             return portfolio_ret
-        else:
+        else:  # sharpe
             # 使用旧的A、B计算差分夏普比率
             old_A = self.A
             old_B = self.B
             denominator = (old_B - old_A**2)**1.5
-            if abs(denominator) < 1e-6:
+            
+            if denominator == 0:
                 dsr = 0
             else:
                 dsr = (old_B * (portfolio_ret - old_A) - 0.5 * old_A * (portfolio_ret**2 - old_B)) / denominator
+            
             # 更新A、B
             self.A = old_A + eta * (portfolio_ret - old_A)
             self.B = old_B + eta * (portfolio_ret**2 - old_B)
             return dsr
 
     def update(self, state, action, reward, next_state, next_action):
+        # 计算TD误差
         delta = reward + gamma * self.q.loc[next_state, next_action] - self.q.loc[state, action]
-        # 替换迹更新
-        self.e = self.e * gamma * lambda_
+        
+        # 替换迹更新 - 当前状态动作对设为1
         self.e.loc[state, action] = 1
-        self.q += alpha * delta * self.e
+        
+        # 更新Q值
+        for s in self.q.index:
+            for a in self.q.columns:
+                self.q.loc[s, a] += alpha * delta * self.e.loc[s, a]
+        
+        # 衰减所有资格迹
+        self.e = gamma * lambda_ * self.e
 
     def choose_action(self, state):
         if np.random.rand() < epsilon:
@@ -69,10 +80,27 @@ class QLambdaAgent(SarsaLambdaAgent):
         super().__init__(reward_type)
 
     def update(self, state, action, reward, next_state):
-        delta = reward + gamma * self.q.loc[next_state].max() - self.q.loc[state, action]
-        self.e = self.e * gamma * lambda_
+        # 找到下一状态的最大Q值动作
+        a_star = self.q.loc[next_state].idxmax()
+        
+        # 计算TD误差
+        delta = reward + gamma * self.q.loc[next_state, a_star] - self.q.loc[state, action]
+        
+        # 设置当前状态动作对的资格迹为1
         self.e.loc[state, action] = 1
-        self.q += alpha * delta * self.e
+        
+        # 更新Q值
+        for s in self.q.index:
+            for a in self.q.columns:
+                self.q.loc[s, a] += alpha * delta * self.e.loc[s, a]
+        
+        # 根据贪婪动作更新资格迹
+        # 如果下一动作不是贪婪的，将所有资格迹归零
+        next_action = self.choose_action(next_state)
+        if next_action != a_star:
+            self.e = 0 * self.e
+        else:
+            self.e = gamma * lambda_ * self.e
 
 class TDContinuousAgent:
     """
@@ -80,31 +108,40 @@ class TDContinuousAgent:
     """
     def __init__(self):
         # 每个状态有theta=[theta1, theta2], theta1 in [0,1]代表股票比例
-        self.theta = {
-            '11': [0.5, 0], '01': [0.5, 0],
-            '10': [0.5, 0], '00': [0.5, 0]
-        }
-        self.e_trace = {
-            '11': [0, 0], '01': [0, 0],
-            '10': [0, 0], '00': [0, 0]
-        }
+        states = ['11', '01', '10', '00']
+        self.theta = {s: [np.random.uniform(0, 1), 0] for s in states}
+        self.e_trace = {s: [0, 0] for s in states}
+
+    def get_value(self, state, spx_ret, agg_ret):
+        """计算当前状态的值函数."""
+        # V(s) = θ₁ᴱ(R_t^S - R_t^B) + θ₂ᴱ
+        return self.theta[state][0] * (spx_ret - agg_ret) + self.theta[state][1]
 
     def get_allocation(self, state):
+        """根据当前状态返回股票分配比例."""
         if np.random.rand() < epsilon:
+            # 探索：返回[0,1]之间的随机值
             return np.random.uniform(0, 1)
         else:
+            # 利用：返回当前状态的θ₁值
             return np.clip(self.theta[state][0], 0, 1)
 
     def update(self, state, spx_ret, agg_ret, reward, next_state):
-        gradient = [spx_ret - agg_ret, 1]
-        current_value = self.theta[state][0] * (spx_ret - agg_ret) + self.theta[state][1]
-        next_value = self.theta[next_state][0] * (spx_ret - agg_ret) + self.theta[next_state][1]
+        # 计算当前状态和下一状态的值函数
+        current_value = self.get_value(state, spx_ret, agg_ret)
+        next_value = self.get_value(next_state, spx_ret, agg_ret)
+        
+        # 计算TD误差
         delta = reward + gamma * next_value - current_value
-        # 资格迹更新
+        
+        # 更新资格迹: e = γλe + ∇θV(s)
+        gradient = [spx_ret - agg_ret, 1]  # ∇θV(s) = (R_t^S - R_t^B, 1)^T
         for i in range(2):
             self.e_trace[state][i] = gamma * lambda_ * self.e_trace[state][i] + gradient[i]
-        # 参数更新
+        
+        # 更新参数: θ = θ + αδe
         for i in range(2):
             self.theta[state][i] += alpha * delta * self.e_trace[state][i]
-        # 约束theta1在[0,1]
+        
+        # 约束θ₁在[0,1]区间
         self.theta[state][0] = np.clip(self.theta[state][0], 0, 1)

@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from backtest import backtest, backtest_AKA
+import os
 from visualization import plot_fig4_5, plot_fig6_7
 
 def load_ptf1_annual():
@@ -12,41 +12,22 @@ def load_ptf1_annual():
     ptf1 = {sheet: pd.read_excel(file_path, sheet_name=sheet) for sheet in sheets}
     return ptf1['Yearly'].set_index('Dates')
 
+def ensure_dir_exists(directory):
+    """确保目录存在，不存在则创建"""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
 if __name__ == "__main__":
     # 读取数据
     ptf1_annual = load_ptf1_annual()
     
-    # 设置训练和测试区间（示例中采用2000年底为训练结束，2016年底为测试结束）
-    train_end = pd.to_datetime('2000-12-31')
-    test_end = pd.to_datetime('2016-12-31')
-    
-    # 运行静态知识代理回测 (Static Knowledge Agent, SKA)
-    static_values, static_dates = backtest(
-        data=ptf1_annual,
-        train_end_date=train_end,
-        test_end_date=test_end,
-        agent_type='sarsa',
-        reward_type='return',
-        freq='annual',
-        portfolio='ptf1'
-    )
-    print("Static (SKA) final portfolio value:", static_values[-1])
-    
-    # 运行自适应知识代理回测 (Adaptive Knowledge Agent, AKA)
-    adaptive_values, adaptive_dates = backtest_AKA(
-        data=ptf1_annual,
-        train_end_date=train_end,
-        test_end_date=test_end,
-        agent_type='sarsa',
-        reward_type='return',
-        freq='annual',
-        portfolio='ptf1'
-    )
-    print("Adaptive (AKA) final portfolio value:", adaptive_values[-1])
+    # 确保图片保存目录存在
+    figures_dir = './results'
+    ensure_dir_exists(figures_dir)
     
     # 绘制论文中的图表
     # Fig.4 & Fig.5: 训练区间 [1976, 2001]，测试区间 (2001, 2016]
-    plot_fig4_5(
+    fig4, fig5 = plot_fig4_5(
         data=ptf1_annual,
         train_start_str='1976-01-01',
         train_end_str='2001-12-31',
@@ -54,11 +35,15 @@ if __name__ == "__main__":
         test_end_str='2016-12-31',
         freq='annual',
         portfolio='ptf1',
-        fig_title_prefix=''  # 无额外前缀，标题直接为 Fig.4 和 Fig.5
+        fig_title_prefix=''
     )
     
+    # 保存 Fig.4 和 Fig.5
+    fig4.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period1.png'), dpi=300, bbox_inches='tight')
+    fig5.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period1.png'), dpi=300, bbox_inches='tight')
+    
     # Fig.6 & Fig.7: 训练区间 [1976, 2000]，测试区间 (2000, 2016]
-    plot_fig6_7(
+    fig6, fig7 = plot_fig6_7(
         data=ptf1_annual,
         train_start_str='1976-01-01',
         train_end_str='2000-12-31',
@@ -68,4 +53,10 @@ if __name__ == "__main__":
         portfolio='ptf1',
         fig_title_prefix=''
     )
+    
+    # 保存 Fig.6 和 Fig.7
+    fig6.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period2.png'), dpi=300, bbox_inches='tight')
+    fig7.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period2.png'), dpi=300, bbox_inches='tight')
+    
+    # 显示所有图表
     plt.show()
