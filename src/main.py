@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-from visualization import plot_fig4_5, plot_fig6_7
+from visualization import plot_fig4_5, plot_fig6_7, plot_fig8_9, plot_fig10_11
 
 def load_ptf1_annual():
     """
@@ -39,8 +39,8 @@ if __name__ == "__main__":
     )
     
     # 保存 Fig.4 和 Fig.5
-    fig4.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period1.png'), dpi=300, bbox_inches='tight')
-    fig5.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period1.png'), dpi=300, bbox_inches='tight')
+    #fig4.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period1.png'), dpi=300, bbox_inches='tight')
+    #fig5.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period1.png'), dpi=300, bbox_inches='tight')
     
     # Fig.6 & Fig.7: 训练区间 [1976, 2000]，测试区间 (2000, 2016]
     fig6, fig7 = plot_fig6_7(
@@ -55,8 +55,62 @@ if __name__ == "__main__":
     )
     
     # 保存 Fig.6 和 Fig.7
-    fig6.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period2.png'), dpi=300, bbox_inches='tight')
-    fig7.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period2.png'), dpi=300, bbox_inches='tight')
+    #fig6.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period2.png'), dpi=300, bbox_inches='tight')
+    #fig7.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period2.png'), dpi=300, bbox_inches='tight')
     
+    # 显示所有图表
+    #plt.show()
+
+
+def load_ptf3_annual():
+    """
+    读取 Portfolio_3.xlsx 中的年度数据，并将 'Dates' 列设置为索引.
+    """
+    file_path = './data/processed/Portfolio_3.xlsx'
+    sheets = ['Quarterly', 'Semi Annually', 'Yearly']
+    ptf3 = {sheet: pd.read_excel(file_path, sheet_name=sheet) for sheet in sheets}
+    return ptf3['Yearly'].set_index('Dates')
+
+if __name__ == "__main__":
+    # 读取数据
+    ptf3_annual = load_ptf3_annual()
+    
+    # 确保图片保存目录存在
+    figures_dir = './results'
+    ensure_dir_exists(figures_dir)
+    
+    # 绘制论文中的图表
+    # Fig.8 & Fig.9: 训练区间 [1976, 2001]，测试区间 (2001, 2016]
+    fig8, fig9 = plot_fig8_9(
+        data=ptf3_annual,
+        train_start_str='1976-01-01',
+        train_end_str='2001-12-31',
+        test_start_str='2002-01-01',
+        test_end_str='2016-12-31',
+        freq='annual',
+        portfolio='ptf3',
+        fig_title_prefix=''
+    )
+    
+    # 保存 Fig.8 和 Fig.9
+    #fig8.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period1.png'), dpi=300, bbox_inches='tight')
+    #fig9.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period1.png'), dpi=300, bbox_inches='tight')
+    
+    # Fig.10 & Fig.11: 训练区间 [1976, 2000]，测试区间 (2000, 2016]
+    fig10, fig11 = plot_fig10_11(
+        data=ptf3_annual,
+        train_start_str='1976-01-01',
+        train_end_str='2000-12-31',
+        test_start_str='2001-01-01',
+        test_end_str='2016-12-31',
+        freq='annual',
+        portfolio='ptf3',
+        fig_title_prefix=''
+    )
+    
+    # 保存 Fig.10 和 Fig.11
+    #fig10.savefig(os.path.join(figures_dir, 'portfolio_performance_on_policy_period2.png'), dpi=300, bbox_inches='tight')
+    #fig11.savefig(os.path.join(figures_dir, 'portfolio_performance_off_policy_period2.png'), dpi=300, bbox_inches='tight')
+
     # 显示所有图表
     plt.show()

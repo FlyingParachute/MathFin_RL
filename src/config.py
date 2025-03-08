@@ -10,7 +10,7 @@ column_names = {
         'semi_annual':{'spx': 'SPXret_s',  'agg': 'AGGret_s'},
         'annual':     {'spx': 'SPXret_a',  'agg': 'AGGret_a'}
     },
-    'ptf2': {
+    'ptf3': {
         'quarterly':  {'spx': 'SPXret_1q', 'agg': 'TNXret_1q'},
         'semi_annual':{'spx': 'SPXret_s',  'agg': 'TNXret_s'},
         'annual':     {'spx': 'SPXret_a',  'agg': 'TNXret_a'}
