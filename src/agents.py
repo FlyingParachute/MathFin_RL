@@ -3,31 +3,31 @@ import pandas as pd
 from config import gamma, lambda_, alpha, epsilon, eta
 
 def get_state(spx_ret, agg_ret):
-    """将spx和agg的正负收益转换为二进制状态."""
+    """Convert positive and negative returns of spx and agg to binary states."""
     s = ''
     s += '1' if spx_ret >= 0 else '0'
     s += '1' if agg_ret >= 0 else '0'
     return s
 
-# 离散动作空间(股票比例)
+# Discrete action space (stock proportion)
 actions = [0.0, 0.25, 0.5, 0.75, 1.0]
 
 def initialize_q():
-    """初始化Q矩阵(4状态x5动作)."""
+    """Initialize Q matrix (4 states x 5 actions)."""
     states = ['11', '01', '10', '00']
     return pd.DataFrame(np.random.rand(4, 5), index=states, columns=actions)
 
 class SarsaLambdaAgent:
     """
-    SARSA(λ)离散动作代理.
-    reward_type='return' 或 'sharpe'.
+    SARSA(λ) discrete action agent.
+    reward_type='return' or 'sharpe'.
     """
     def __init__(self, reward_type='return'):
         self.q = initialize_q()
         self.e = pd.DataFrame(np.zeros((4, 5)), index=self.q.index, columns=self.q.columns)
         self.reward_type = reward_type
-        self.A = 0  # 用于差分夏普比率的第一阶矩
-        self.B = 0  # 用于差分夏普比率的第二阶矩
+        self.A = 0  # First moment for differential Sharpe ratio
+        self.B = 0  # Second moment for differential Sharpe ratio
 
     def get_reward(self, spx_ret, agg_ret, action):
         portfolio_ret = action * spx_ret + (1 - action) * agg_ret
@@ -51,18 +51,18 @@ class SarsaLambdaAgent:
             return dsr
 
     def update(self, state, action, reward, next_state, next_action):
-        # 计算TD误差
+        # Calculate TD error
         delta = reward + gamma * self.q.loc[next_state, next_action] - self.q.loc[state, action]
         
-        # 替换迹更新 - 当前状态动作对设为1
+        # Replace trace update - set current state-action pair to 1
         self.e.loc[state, action] = 1
         
-        # 更新Q值
+        # Update Q values
         for s in self.q.index:
             for a in self.q.columns:
                 self.q.loc[s, a] += alpha * delta * self.e.loc[s, a]
         
-        # 衰减所有资格迹
+        # Decay all eligibility traces
         self.e = gamma * lambda_ * self.e
 
     def choose_action(self, state):
@@ -73,29 +73,29 @@ class SarsaLambdaAgent:
 
 class QLambdaAgent(SarsaLambdaAgent):
     """
-    Q(λ)离散动作代理.
-    reward_type='return' 或 'sharpe'.
+    Q(λ) discrete action agent.
+    reward_type='return' or 'sharpe'.
     """
     def __init__(self, reward_type='return'):
         super().__init__(reward_type)
 
     def update(self, state, action, reward, next_state):
-        # 找到下一状态的最大Q值动作
+        # Find the action with maximum Q value for the next state
         a_star = self.q.loc[next_state].idxmax()
         
-        # 计算TD误差
+        # Calculate TD error
         delta = reward + gamma * self.q.loc[next_state, a_star] - self.q.loc[state, action]
         
-        # 设置当前状态动作对的资格迹为1
+        # Set eligibility trace for the current state-action pair to 1
         self.e.loc[state, action] = 1
         
-        # 更新Q值
+        # Update Q values
         for s in self.q.index:
             for a in self.q.columns:
                 self.q.loc[s, a] += alpha * delta * self.e.loc[s, a]
         
-        # 根据贪婪动作更新资格迹
-        # 如果下一动作不是贪婪的，将所有资格迹归零
+        # Update eligibility traces based on greedy action
+        # If the next action is not greedy, zero all eligibility traces
         next_action = self.choose_action(next_state)
         if next_action != a_star:
             self.e = 0 * self.e
@@ -104,44 +104,44 @@ class QLambdaAgent(SarsaLambdaAgent):
 
 class TDContinuousAgent:
     """
-    TD(λ)连续动作代理(两资产).
+    TD(λ) continuous action agent (two assets).
     """
     def __init__(self):
-        # 每个状态有theta=[theta1, theta2], theta1 in [0,1]代表股票比例
+        # Each state has theta=[theta1, theta2], theta1 in [0,1] represents stock proportion
         states = ['11', '01', '10', '00']
         self.theta = {s: [np.random.uniform(0, 1), 0] for s in states}
         self.e_trace = {s: [0, 0] for s in states}
 
     def get_value(self, state, spx_ret, agg_ret):
-        """计算当前状态的值函数."""
+        """Calculate the value function for the current state."""
         # V(s) = θ₁ᴱ(R_t^S - R_t^B) + θ₂ᴱ
         return self.theta[state][0] * (spx_ret - agg_ret) + self.theta[state][1]
 
     def get_allocation(self, state):
-        """根据当前状态返回股票分配比例."""
+        """Return stock allocation proportion based on current state."""
         if np.random.rand() < epsilon:
-            # 探索：返回[0,1]之间的随机值
+            # Exploration: return a random value between [0,1]
             return np.random.uniform(0, 1)
         else:
-            # 利用：返回当前状态的θ₁值
+            # Exploitation: return the θ₁ value for the current state
             return np.clip(self.theta[state][0], 0, 1)
 
     def update(self, state, spx_ret, agg_ret, reward, next_state):
-        # 计算当前状态和下一状态的值函数
+        # Calculate value functions for current and next states
         current_value = self.get_value(state, spx_ret, agg_ret)
         next_value = self.get_value(next_state, spx_ret, agg_ret)
         
-        # 计算TD误差
+        # Calculate TD error
         delta = reward + gamma * next_value - current_value
         
-        # 更新资格迹: e = γλe + ∇θV(s)
+        # Update eligibility trace: e = γλe + ∇θV(s)
         gradient = [spx_ret - agg_ret, 1]  # ∇θV(s) = (R_t^S - R_t^B, 1)^T
         for i in range(2):
             self.e_trace[state][i] = gamma * lambda_ * self.e_trace[state][i] + gradient[i]
         
-        # 更新参数: θ = θ + αδe
+        # Update parameters: θ = θ + αδe
         for i in range(2):
             self.theta[state][i] += alpha * delta * self.e_trace[state][i]
         
-        # 约束θ₁在[0,1]区间
+        # Constrain θ₁ to the [0,1] interval
         self.theta[state][0] = np.clip(self.theta[state][0], 0, 1)
