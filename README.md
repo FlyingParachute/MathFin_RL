@@ -1,19 +1,16 @@
-# RL大作业
+# Coursework of Advances in Machine Learning
 
-> **注意：** model.py和model.ipynb都是不完善的版本，我打算把代码分成几个文件，调顺溜了放在model.ipynb里作为提交.
+*MSc Mathematics and Finance, 2024-2025, Imperial College London*
 
-## 数据类
-- **`data/processed/Portfolio_1.xlsx`**: SPX和AGG的数据
-- **`data/processed/Portfolio_2.xlsx`**: SPX和TNX的数据
-- **`src/data_process.ipynb`**: 数据处理的notebook，直接用/data/processed/下数据的话不用管
+This repository demonstrates our implementation and extensions of the paper "Trading financial indices with reinforcement learning agents" by [Parag C. Pendharkar, Patrick Cusatis (2018)](https://www.sciencedirect.com/science/article/abs/pii/S0957417418301209). 
 
-## 当前版本目录
-- **`main.py`**: 主程序
-- **`agents.py`**: 文章中三种agent的实现
-- **`config.py`**: 配置文件，现在用的文章最优参数，建议别改了
-- **`backtest.py`**: 回测框架，包括SKA和AKA
-- **`visualizations.py`**: 画图，目前把前四章图出了
+**Group Members:** Sunqinli Wang, Jinyi Lin, Xingjian Zhao, Jingtong Xu
 
----
+## Project Structure
 
-**建议：** 改代码在上面五个文件里改，model.py和model.ipynb都是不完善的版本，而且过分冗长。
+- `data/raw/`: contains raw data files fetched from Yahoo Finance and Bloomberg Terminal.
+- `data/processed/`: contains processed data files. Portfolio 1 for S&P 500 and AGG Bonds, Portfolio 3 for S&P 500 and T-NOTE 10Y.
+- `notebooks/data_process.ipynb`: data processing notebook.
+- `notebooks/RL_FinalProject.ipynb`: **main notebook for the project.**
+- `src/`: contains code when debugging and testing.
+- `results/`: contains results of the project, both figures and tables.
